@@ -17,7 +17,7 @@ public class ImageComparison {
     final Color colorForDifferences = Color.RED;
     int colorTolerance;
     public static final int thresholdOfDifferentObjectsPixelSize = 15;
-    public static final int rectangularAroundObjectPixelSize = 45;
+    public static final int aroundObjectPixelSize = 45;
 
     public ImageComparison(File originalFile, File modifiedFile, int colorTolerance) {
         this.originalFile = originalFile;
@@ -57,7 +57,11 @@ public class ImageComparison {
         createOutputImage(resultImage);
     }
 
-    private void analyzePixel(WritableRaster resultRaster, ArrayList<Integer> maxWidthDifference, ArrayList<Integer> maxHeightDifference, int widthPixel, int heightPixel) {
+    private void analyzePixel(WritableRaster resultRaster,
+                              ArrayList<Integer> maxWidthDifference,
+                              ArrayList<Integer> maxHeightDifference,
+                              int widthPixel,
+                              int heightPixel) {
         if (Math.abs(originalImage.getRGB(widthPixel, heightPixel) - modifiedImage.getRGB(widthPixel, heightPixel)) > 256 * colorTolerance / 100) {
             colorData = model.getDataElements(colorForDifferences.getRGB(), null);
 
@@ -69,72 +73,66 @@ public class ImageComparison {
         resultRaster.setDataElements(widthPixel, heightPixel, colorData);
     }
 
-    private void processObjectsDetection(ArrayList<Integer> maxWidthDifference, ArrayList<Integer> maxHeightDifference, WritableRaster resultRaster) {
-        ArrayList<Integer> averageHorizontalPoint = detectHorizontalCenterPixelsForObjects(maxWidthDifference);
-        ArrayList<Integer> averageVerticalPoint = detectVerticalCenterPixelsForObjects(maxHeightDifference);
+    private void processObjectsDetection(ArrayList<Integer> maxWidthDiff,
+                                         ArrayList<Integer> maxHeightDiff,
+                                         WritableRaster resultRaster) {
+        ArrayList<Integer> avgHPoint = detectHorizontalCenterPixelsForObjects(maxWidthDiff);
+        ArrayList<Integer> avgVPoint = detectVerticalCenterPixelsForObjects(maxHeightDiff);
 
-        drawRectangulartAroundObjects(resultRaster, averageHorizontalPoint, averageVerticalPoint);
+        drawRectangularAroundObjects(resultRaster, avgHPoint, avgVPoint);
     }
 
-    private void drawRectangulartAroundObjects(WritableRaster resultRaster, ArrayList<Integer> averageHorizontalPoint, ArrayList<Integer> averageVerticalPoint) {
+    private void drawRectangularAroundObjects(WritableRaster resultRaster, ArrayList<Integer> avgHPoint, ArrayList<Integer> avgVPoint) {
         colorData = model.getDataElements(colorForDifferences.getRGB(), null);
-        for (int numberOfObjects = 0; numberOfObjects < averageHorizontalPoint.size(); numberOfObjects++) {
-            for (int i = 0; i < rectangularAroundObjectPixelSize; i++) {
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) + i, averageVerticalPoint.get(numberOfObjects) + rectangularAroundObjectPixelSize, colorData);
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) - i, averageVerticalPoint.get(numberOfObjects) + rectangularAroundObjectPixelSize, colorData);
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) + i, averageVerticalPoint.get(numberOfObjects) - rectangularAroundObjectPixelSize, colorData);
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) - i, averageVerticalPoint.get(numberOfObjects) - rectangularAroundObjectPixelSize, colorData);
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) + rectangularAroundObjectPixelSize, averageVerticalPoint.get(numberOfObjects) + i, colorData);
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) + rectangularAroundObjectPixelSize, averageVerticalPoint.get(numberOfObjects) - i, colorData);
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) - rectangularAroundObjectPixelSize, averageVerticalPoint.get(numberOfObjects) + i, colorData);
-                resultRaster.setDataElements(averageHorizontalPoint.get(numberOfObjects) - rectangularAroundObjectPixelSize, averageVerticalPoint.get(numberOfObjects) - i, colorData);
+        for (int numberOfObjects = 0; numberOfObjects < avgHPoint.size(); numberOfObjects++) {
+            for (int i = 0; i < aroundObjectPixelSize; i++) {
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) + i, avgVPoint.get(numberOfObjects) + aroundObjectPixelSize, colorData);
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) - i, avgVPoint.get(numberOfObjects) + aroundObjectPixelSize, colorData);
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) + i, avgVPoint.get(numberOfObjects) - aroundObjectPixelSize, colorData);
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) - i, avgVPoint.get(numberOfObjects) - aroundObjectPixelSize, colorData);
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) + aroundObjectPixelSize, avgVPoint.get(numberOfObjects) + i, colorData);
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) + aroundObjectPixelSize, avgVPoint.get(numberOfObjects) - i, colorData);
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) - aroundObjectPixelSize, avgVPoint.get(numberOfObjects) + i, colorData);
+                resultRaster.setDataElements(avgHPoint.get(numberOfObjects) - aroundObjectPixelSize, avgVPoint.get(numberOfObjects) - i, colorData);
             }
         }
     }
 
     private ArrayList<Integer> detectHorizontalCenterPixelsForObjects(ArrayList<Integer> maxWidthDifference) {
-        int horizontalSum = 0;
-        int previousHorizontalIndex = 0;
-        ArrayList<Integer> averageHorizontalPoint = new ArrayList<>();
+        int hSum = 0;
+        int previousHIndex = 0;
+        ArrayList<Integer> averageHPoint = new ArrayList<>();
 
-        for (int horizontalIndex = 1; horizontalIndex < maxWidthDifference.size(); horizontalIndex++) {
+        for (int hIndex = 1; hIndex < maxWidthDifference.size(); hIndex++) {
 
-            if (Math.abs((maxWidthDifference.get(horizontalIndex) - maxWidthDifference.get(horizontalIndex - 1))) < thresholdOfDifferentObjectsPixelSize && horizontalIndex + 1 != maxWidthDifference.size()) {
-                horizontalSum += maxWidthDifference.get(horizontalIndex);
+            if (Math.abs((maxWidthDifference.get(hIndex) - maxWidthDifference.get(hIndex - 1))) < thresholdOfDifferentObjectsPixelSize &&
+                                                                                     hIndex + 1 != maxWidthDifference.size()) {
+                hSum += maxWidthDifference.get(hIndex);
             } else {
-                if (previousHorizontalIndex == 0) {
-                    averageHorizontalPoint.add(horizontalSum / (horizontalIndex));
-
-                } else {
-
-                    averageHorizontalPoint.add(horizontalSum / (horizontalIndex - previousHorizontalIndex));
-                }
-                horizontalSum = 0;
-                previousHorizontalIndex = horizontalIndex;
+                averageHPoint.add(hSum / (hIndex - previousHIndex));
+                hSum = 0;
+                previousHIndex = hIndex;
             }
         }
-        return averageHorizontalPoint;
+        return averageHPoint;
     }
 
     private ArrayList<Integer> detectVerticalCenterPixelsForObjects(ArrayList<Integer> maxHeightDifference) {
-        int verticalSum = 0;
-        int previousVerticalIndex = 0;
-        ArrayList<Integer> averageVerticalPoint = new ArrayList<>();
+        int vSum = 0;
+        int previousVIndex = 0;
+        ArrayList<Integer> averageVPoint = new ArrayList<>();
 
-        for (int verticalIndex = 1; verticalIndex < maxHeightDifference.size(); verticalIndex++) {
-            if (Math.abs((maxHeightDifference.get(verticalIndex) - maxHeightDifference.get(verticalIndex - 1))) < thresholdOfDifferentObjectsPixelSize && verticalIndex + 1 != maxHeightDifference.size()) {
-                verticalSum += maxHeightDifference.get(verticalIndex);
+        for (int vIndex = 1; vIndex < maxHeightDifference.size(); vIndex++) {
+            if (Math.abs((maxHeightDifference.get(vIndex) - maxHeightDifference.get(vIndex - 1))) < thresholdOfDifferentObjectsPixelSize &&
+                                                                                       vIndex + 1 != maxHeightDifference.size()) {
+                vSum += maxHeightDifference.get(vIndex);
             } else {
-                if (previousVerticalIndex == 0) {
-                    averageVerticalPoint.add(verticalSum / (verticalIndex));
-                } else {
-                    averageVerticalPoint.add(verticalSum / (verticalIndex - previousVerticalIndex));
-                }
-                verticalSum = 0;
-                previousVerticalIndex = verticalIndex;
+                averageVPoint.add(vSum / (vIndex - previousVIndex));
+                vSum = 0;
+                previousVIndex = vIndex;
             }
         }
-        return averageVerticalPoint;
+        return averageVPoint;
     }
 
     private void createOutputImage(BufferedImage resultImage) {
